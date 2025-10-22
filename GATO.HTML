@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Perfil Comportamental – Instituto Impulso</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --eagle: #ff6b6b;
+      --cat: #4ecdc4;
+      --wolf: #45b7d1;
+      --shark: #96ceb4;
+      --bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --bg-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      --text-primary: #2d3748;
+      --text-secondary: #718096;
+      --shadow-light: 0 10px 30px rgba(0,0,0,0.1);
+      --shadow-hover: 0 20px 40px rgba(0,0,0,0.15);
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #f7fafc, #edf2f7);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+    .screen {
+      width: 100%;
+      max-width: 800px;
+      background: white;
+      border-radius: 24px;
+      box-shadow: var(--shadow-light);
+      padding: 40px 30px;
+      text-align: center;
+      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      position: relative;
+      overflow: hidden;
+    }
+    .screen::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--bg-primary);
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+    .screen.active::before {
+      transform: scaleX(1);
+    }
+    .progress {
+      font-size: 0.95em;
+      color: var(--text-secondary);
+      margin-bottom: 25px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+    .progress::after {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      background: var(--bg-primary);
+      border-radius: 50%;
+      margin-left: 10px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .question-text {
+      font-size: 1.5em;
+      margin-bottom: 30px;
+      line-height: 1.6;
+      font-weight: 300;
+      color: var(--text-primary);
+    }
+    .options {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    .option {
+      padding: 18px;
+      background: linear-gradient(135deg, #f7fafc, #edf2f7);
+      border: 2px solid transparent;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: left;
+      font-weight: 500;
+      position: relative;
+      overflow: hidden;
+    }
+    .option::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 100%;
+      background: var(--bg-secondary);
+      transition: width 0.3s ease;
+      z-index: -1;
+    }
+    .option:hover::before {
+      width: 100%;
+    }
+    .option:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+    }
+    .option.selected {
+      border-color: var(--bg-primary);
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+    }
+    .btn {
+      background: var(--bg-primary);
+      color: white;
+      border: none;
+      padding: 16px 40px;
+      font-size: 1.1em;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 600;
+      box-shadow: 0 6px 15px rgba(102, 126, 234, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+    .btn::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      background: rgba(255,255,255,0.2);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+    .btn:active::after {
+      width: 300px;
+      height: 300px;
+    }
+    .btn:active {
+      transform: scale(0.98);
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .results-screen {
+      display: none;
+      animation: fadeInUp 0.6s ease;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .results-title {
+      font-size: 2.2em;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, var(--bg-primary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 700;
+    }
+    .results-subtitle {
+      font-size: 1.1em;
+      color: var(--text-secondary);
+      margin-bottom: 40px;
+      font-weight: 400;
+    }
+    .chart-container {
+      margin: 40px auto;
+      max-width: 600px;
+      padding: 20px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: var(--shadow-light);
+    }
+    .radar-chart {
+      position: relative;
+      height: 400px;
+    }
+    .explanation-section {
+      margin: 40px 0;
+      text-align: left;
+      max-width: 700px;
+    }
+    .explanation-title {
+      font-size: 1.4em;
+      margin-bottom: 20px;
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+    .profile-card {
+      display: inline-block;
+      width: 280px;
+      margin: 10px;
+      padding: 20px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: var(--shadow-light);
+      transition: transform 0.3s ease;
+    }
+    .profile-card:hover {
+      transform: translateY(-5px);
+    }
+    .profile-icon {
+      font-size: 3em;
+      margin-bottom: 10px;
+    }
+    .profile-name {
+      font-size: 1.2em;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .profile-desc {
+      font-size: 0.9em;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .brain-section {
+      margin: 50px 0;
+      padding: 30px;
+      background: linear-gradient(135deg, #f7fafc, #edf2f7);
+      border-radius: 24px;
+      box-shadow: var(--shadow-light);
+    }
+    .brain-title {
+      font-size: 1.6em;
+      margin-bottom: 25px;
+      text-align: center;
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+    .brain-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 30px;
+      align-items: start;
+    }
+    .brain-item {
+      text-align: center;
+      padding: 20px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: var(--shadow-light);
+      transition: all 0.3s ease;
+    }
+    .brain-item:hover {
+      transform: scale(1.05);
+    }
+    .brain-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 15px;
+      background: #e2e8f0;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2em;
+    }
+    .brain-label {
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    .brain-desc {
+      font-size: 0.85em;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+    .scale-section {
+      display: flex;
+      justify-content: space-around;
+      margin: 30px 0;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+    .scale {
+      flex: 1;
+      min-width: 200px;
+      text-align: center;
+    }
+    .scale-title {
+      font-weight: 600;
+      margin-bottom: 12px;
+      font-size: 1em;
+      color: var(--text-primary);
+    }
+    .scale-bar {
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .scale-fill {
+      height: 100%;
+      transition: width 1s ease;
+      border-radius: 4px;
+    }
+    .scale-label {
+      font-size: 0.9em;
+      color: var(--text-secondary);
+    }
+    footer {
+      margin-top: 40px;
+      font-size: 0.9em;
+      color: var(--text-secondary);
+      text-align: center;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+    }
+    @media (max-width: 768px) {
+      .screen { padding: 30px 20px; }
+      .question-text { font-size: 1.3em; }
+      .options { gap: 12px; }
+      .scale-section { flex-direction: column; gap: 20px; }
+      .brain-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Tela de Perguntas -->
+  <div class="screen active" id="questionScreen">
+    <div class="progress" id="progressText">Pergunta 1 de 25</div>
+    <div class="question-text" id="questionText"></div>
+    <div class="options" id="optionsContainer"></div>
+    <button class="btn" id="nextBtn" disabled>Continuar</button>
+  </div>
+
+  <!-- Tela de Resultados -->
+  <div class="screen results-screen" id="resultsScreen">
+    <h1 class="results-title">Seu Perfil Comportamental</h1>
+    <p class="results-subtitle">Descubra os insights profundos sobre seu estilo de decisão e interação.</p>
+
+    <!-- Radar Chart Moderno -->
+    <div class="chart-container">
+      <canvas class="radar-chart" id="radarChart"></canvas>
+    </div>
+
+    <!-- Explicações Profundas -->
+    <div class="explanation-section">
+      <h2 class="explanation-title">Análise Detalhada dos Seus Traços</h2>
+      <div id="profileExplanations"></div>
+    </div>
+
+    <!-- Mapa Cerebral Aprimorado com Desenhos -->
+    <div class="brain-section">
+      <h2 class="brain-title">Mapa Cerebral de Decisão – Visualização Neurológica</h2>
+      <p style="text-align: center; margin-bottom: 30px; color: var(--text-secondary);">Cada quadrante representa uma região cerebral ativada, com desenhos simbólicos para melhor compreensão. Baseado em neurociência comportamental, esses perfis mapeiam caminhos neurais como o córtex pré-frontal (razão) e o sistema límbico (emoção).</p>
+      <div class="brain-grid" id="brainGrid"></div>
+
+      <!-- Escalas Atualizadas -->
+      <div class="scale-section">
+        <div class="scale">
+          <div class="scale-title">Razão ← → Emoção</div>
+          <div class="scale-bar">
+            <div class="scale-fill" id="reasonEmotionBar" style="background: linear-gradient(to right, var(--wolf), var(--eagle));"></div>
+          </div>
+          <div class="scale-label" id="reasonEmotionLabel"></div>
+        </div>
+        <div class="scale">
+          <div class="scale-title">Pensante ← → Atuante</div>
+          <div class="scale-bar">
+            <div class="scale-fill" id="thinkActBar" style="background: linear-gradient(to right, var(--cat), var(--shark));"></div>
+          </div>
+          <div class="scale-label" id="thinkActLabel"></div>
+        </div>
+        <div class="scale">
+          <div class="scale-title">Criativo ← → Prático</div>
+          <div class="scale-bar">
+            <div class="scale-fill" id="creativePracticalBar" style="background: linear-gradient(to right, var(--eagle), var(--wolf));"></div>
+          </div>
+          <div class="scale-label" id="creativePracticalLabel"></div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn" id="pdfBtn" style="margin-top: 30px;">Salvar como PDF</button>
+    <footer>Instituto Impulso Coaching de Liderança – www.impulsocoaching.com.br</footer>
+  </div>
+
+  <script>
+    // Todas as 25 perguntas exatamente como no PDF
+    const questions = [
+      { text: "Eu sou...", options: [{l:"Idealista, criativo e visionário",v:"I"},{l:"Divertido, espiritual e benéfico",v:"C"},{l:"Confiável, meticuloso e previsível",v:"O"},{l:"Focado, determinado e persistente",v:"A"}] },
+      { text: "Eu gosto de...", options: [{l:"Ser piloto",v:"A"},{l:"Conversar com os passageiros",v:"C"},{l:"Planejar a viagem",v:"O"},{l:"Explorar novas rotas",v:"I"}] },
+      { text: "Se você quiser se dar bem comigo...", options: [{l:"Me dê liberdade",v:"I"},{l:"Me deixe saber sua expectativa",v:"O"},{l:"Lidere, siga ou saia do caminho",v:"A"},{l:"Seja amigável, carinhoso e compreensivo",v:"C"}] },
+      { text: "Para conseguir obter bons resultados é preciso...", options: [{l:"Ter incertezas",v:"I"},{l:"Controlar o essencial",v:"O"},{l:"Diversão e celebração",v:"C"},{l:"Planejar e obter recursos",v:"A"}] },
+      { text: "Eu me divirto quando...", options: [{l:"Estou me exercitando",v:"A"},{l:"Tenho novidades",v:"I"},{l:"Estou com os outros",v:"C"},{l:"Determino as regras",v:"O"}] },
+      { text: "Eu penso que...", options: [{l:"Unidos venceremos, divididos perderemos",v:"C"},{l:"O ataque é melhor que a defesa",v:"A"},{l:"É bom ser manso, mas andar com um porrete",v:"I"},{l:"Um homem prevenido vale por dois",v:"O"}] },
+      { text: "Minha preocupação é...", options: [{l:"Gerar a ideia global",v:"I"},{l:"Fazer com que as pessoas gostem",v:"C"},{l:"Fazer com que funcione",v:"O"},{l:"Fazer com que aconteça",v:"A"}] },
+      { text: "Eu Prefiro...", options: [{l:"Perguntas a respostas",v:"I"},{l:"Ter todos os detalhes",v:"O"},{l:"Vantagens a meu favor",v:"A"},{l:"Que todos tenham a chance de serem ouvidos",v:"C"}] },
+      { text: "Eu gosto de...", options: [{l:"Fazer progresso",v:"A"},{l:"Construir memórias",v:"I"},{l:"Fazer sentido",v:"O"},{l:"Tornar as pessoas confortáveis",v:"C"}] },
+      { text: "Eu gosto de chegar...", options: [{l:"Na frente",v:"A"},{l:"Junto",v:"C"},{l:"Na hora",v:"O"},{l:"Em outro lugar",v:"I"}] },
+      { text: "Um ótimo dia para mim é quando...", options: [{l:"Consigo fazer muitas coisas",v:"A"},{l:"Me divirto com meus amigos",v:"C"},{l:"Tudo segue conforme planejado",v:"O"},{l:"Desfruto de coisas novas e estimulantes",v:"I"}] },
+      { text: "Eu vejo a morte como...", options: [{l:"Uma grande aventura misteriosa",v:"I"},{l:"Oportunidade para rever os falecidos",v:"C"},{l:"Um modo de receber recompensas",v:"O"},{l:"Algo que sempre chega muito cedo",v:"A"}] },
+      { text: "Minha filosofia de vida é...", options: [{l:"Há ganhadores e perdedores, e eu acredito ser um ganhador",v:"A"},{l:"Para eu ganhar, ninguém precisa perder",v:"C"},{l:"Para ganhar é preciso seguir as regras",v:"O"},{l:"Para ganhar, é necessário inventar novas regras",v:"I"}] },
+      { text: "Eu sempre gostei de...", options: [{l:"Explorar",v:"I"},{l:"Evitar surpresas",v:"O"},{l:"Focalizar a meta",v:"A"},{l:"Realizar uma abordagem natural",v:"C"}] },
+      { text: "Eu gosto de mudanças se...", options: [{l:"Me der uma vantagem competitiva",v:"A"},{l:"For divertido e puder ser compartilhado",v:"C"},{l:"Me der mais liberdade e variedade",v:"I"},{l:"Melhorar ou me der mais controle",v:"O"}] },
+      { text: "Não existe nada de errado em...", options: [{l:"Se colocar na frente",v:"A"},{l:"Colocar os outros na frente",v:"C"},{l:"Mudar de ideia",v:"I"},{l:"Ser consistente",v:"O"}] },
+      { text: "Eu gosto de buscar conselhos de...", options: [{l:"Pessoas bem-sucedidas",v:"A"},{l:"Anciões e conselheiros",v:"C"},{l:"Autoridades no assunto",v:"O"},{l:"Lugares, os mais estranhos",v:"I"}] },
+      { text: "Meu lema é...", options: [{l:"Fazer o que precisa ser feito",v:"I"},{l:"Fazer bem feito",v:"O"},{l:"Fazer junto com o grupo",v:"C"},{l:"Simplesmente fazer",v:"A"}] },
+      { text: "Eu gosto de...", options: [{l:"Complexidade, mesmo se confuso",v:"I"},{l:"Ordem e sistematização",v:"O"},{l:"Calor humano e animação",v:"C"},{l:"Coisas claras e simples",v:"A"}] },
+      { text: "Tempo para mim é...", options: [{l:"Algo que detesto desperdiçar",v:"A"},{l:"Um grande ciclo",v:"C"},{l:"Uma flecha que leva ao inevitável",v:"O"},{l:"Irrelevante",v:"I"}] },
+      { text: "Se eu fosse bilionário...", options: [{l:"Faria doações para muitas entidades",v:"C"},{l:"Criaria uma poupança avantajada",v:"O"},{l:"Faria o que desse na cabeça",v:"I"},{l:"Me exibiria bastante para algumas pessoas",v:"A"}] },
+      { text: "Eu acredito que...", options: [{l:"O destino é mais importante que a jornada",v:"A"},{l:"A jornada é mais importante que o destino",v:"C"},{l:"Um centavo economizado é um centavo ganho",v:"O"},{l:"Bastam um navio e uma estrela para navegar",v:"I"}] },
+      { text: "Eu acredito também que...", options: [{l:"Aquele que hesita está perdido",v:"A"},{l:"De grão em grão a galinha enche o papo",v:"O"},{l:"O que vai, volta",v:"C"},{l:"Um sorriso ou uma careta é o mesmo para quem é cego",v:"I"}] },
+      { text: "Eu acredito ainda que...", options: [{l:"É melhor prudência do que arrependimento",v:"O"},{l:"A autoridade deve ser desafiada",v:"I"},{l:"Ganhar é fundamental",v:"A"},{l:"O coletivo é mais importante do que o individual",v:"C"}] },
+      { text: "Eu penso que...", options: [{l:"Não é fácil ficar encurralado",v:"I"},{l:"É preferível olhar, antes de pular",v:"O"},{l:"Duas cabeças pensam melhor que uma",v:"C"},{l:"Se você não tem condições de competir, não compita",v:"A"}] }
+    ];
+
+    let currentQuestion = 0;
+    const answers = {};
+    const profileNames = { I: 'Águia', C: 'Gato', O: 'Lobo', A: 'Tubarão' };
+    const profileColors = { I: 'rgba(255, 107, 107, 0.6)', C: 'rgba(78, 205, 196, 0.6)', O: 'rgba(69, 183, 209, 0.6)', A: 'rgba(150, 206, 180, 0.6)' };
+    const profileIcons = { I: '🦅', C: '🐱', O: '🐺', A: '🦈' };
+    const profileDescriptions = {
+      I: 'Visionário e inovador, você ativa o córtex pré-frontal criativo, impulsionando ideias disruptivas e adaptabilidade em cenários incertos. Força: Inovação; Desafio: Foco em execução.',
+      C: 'Empático e colaborativo, seu sistema límbico floresce em conexões humanas, fomentando harmonia e motivação coletiva. Força: Relacionamentos; Desafio: Tomada de decisões assertivas.',
+      O: 'Estratégico e analítico, você equilibra o hemisfério esquerdo com precisão, garantindo estabilidade e planejamento meticuloso. Força: Confiabilidade; Desafio: Flexibilidade.',
+      A: 'Decidido e resiliente, sua amígdala impulsiona ação rápida e persistência, ideal para liderança em crises. Força: Execução; Desafio: Paciência com processos.'
+    };
+
+    const questionTextEl = document.getElementById('questionText');
+    const optionsContainer = document.getElementById('optionsContainer');
+    const nextBtn = document.getElementById('nextBtn');
+    const progressText = document.getElementById('progressText');
+
+    function loadQuestion(index) {
+      const q = questions[index];
+      questionTextEl.textContent = q.text;
+      progressText.textContent = `Pergunta ${index + 1} de ${questions.length}`;
+      optionsContainer.innerHTML = '';
+      q.options.forEach(opt => {
+        const div = document.createElement('div');
+        div.className = 'option';
+        div.textContent = opt.l;
+        div.dataset.value = opt.v;
+        div.addEventListener('click', () => {
+          document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+          div.classList.add('selected');
+          answers[index] = opt.v;
+          nextBtn.disabled = false;
+        });
+        optionsContainer.appendChild(div);
+      });
+      nextBtn.disabled = true;
+    }
+
+    nextBtn.addEventListener('click', () => {
+      if (currentQuestion < questions.length - 1) {
+        currentQuestion++;
+        loadQuestion(currentQuestion);
+      } else {
+        showResults();
+      }
+    });
+
+    function showResults() {
+      const counts = { I: 0, C: 0, O: 0, A: 0 };
+      for (let i = 0; i < questions.length; i++) {
+        const ans = answers[i];
+        if (ans) counts[ans]++;
+      }
+
+      const total = questions.length;
+      const pct = {
+        I: Math.round((counts.I / total) * 100),
+        C: Math.round((counts.C / total) * 100),
+        O: Math.round((counts.O / total) * 100),
+        A: Math.round((counts.A / total) * 100)
+      };
+
+      // Radar Chart Moderno com Chart.js
+      const ctx = document.getElementById('radarChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: [profileNames.I, profileNames.C, profileNames.O, profileNames.A],
+          datasets: [{
+            label: 'Seu Perfil',
+            data: [pct.I, pct.C, pct.O, pct.A],
+            borderColor: 'rgba(102, 126, 234, 1)',
+            backgroundColor: 'rgba(102, 126, 234, 0.2)',
+            borderWidth: 2,
+            pointBackgroundColor: Object.values(profileColors),
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: 'rgba(102, 126, 234, 1)'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              angleLines: { color: 'rgba(0,0,0,0.1)' },
+              grid: { color: 'rgba(0,0,0,0.05)' },
+              pointLabels: { font: { size: 14, weight: 'bold' } },
+              ticks: { beginAtZero: true, max: 100, stepSize: 20 }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.label}: ${context.parsed.r}% - ${profileDescriptions[Object.keys(profileNames).find(k => profileNames[k] === context.label)]?.split(';')[0] || ''}`;
+                }
+              }
+            }
+          },
+          animation: { duration: 2000, easing: 'easeOutQuart' }
+        }
+      });
+
+      // Explicações Detalhadas
+      const explanations = document.getElementById('profileExplanations');
+      explanations.innerHTML = '';
+      Object.entries(profileDescriptions).forEach(([key, desc]) => {
+        const card = document.createElement('div');
+        card.className = 'profile-card';
+        card.innerHTML = `
+          <div class="profile-icon" style="color: ${key === 'I' ? 'var(--eagle)' : key === 'C' ? 'var(--cat)' : key === 'O' ? 'var(--wolf)' : 'var(--shark)'};">${profileIcons[key]}</div>
+          <div class="profile-name" style="color: ${key === 'I' ? 'var(--eagle)' : key === 'C' ? 'var(--cat)' : key === 'O' ? 'var(--wolf)' : 'var(--shark)'};">${profileNames[key]} (${pct[key]}%)</div>
+          <div class="profile-desc">${desc}</div>
+        `;
+        explanations.appendChild(card);
+      });
+
+      // Brain Grid com Desenhos Simbólicos
+      const brainGrid = document.getElementById('brainGrid');
+      brainGrid.innerHTML = '';
+      Object.entries(profileNames).forEach(([key, name]) => {
+        const item = document.createElement('div');
+        item.className = 'brain-item';
+        item.innerHTML = `
+          <div class="brain-icon" style="background: ${key === 'I' ? 'var(--eagle)' : key === 'C' ? 'var(--cat)' : key === 'O' ? 'var(--wolf)' : 'var(--shark)'}; color: white;">
+            ${profileIcons[key]}
+          </div>
+          <div class="brain-label">${name}</div>
+          <div class="brain-desc">Ativação neural: ${pct[key]}%. ${profileDescriptions[key].split(';')[1] || 'Região dominante para decisões.'}</div>
+        `;
+        brainGrid.appendChild(item);
+      });
+
+      // Escala Razão x Emoção
+      const emocao = pct.I + pct.C;
+      const razao = pct.O + pct.A;
+      const reasonEmotionBar = document.getElementById('reasonEmotionBar');
+      const reasonEmotionLabel = document.getElementById('reasonEmotionLabel');
+      const reWidth = Math.max(emocao, razao);
+      reasonEmotionBar.style.width = `${reWidth}%`;
+      reasonEmotionLabel.textContent = `Dominância: ${emocao > razao ? 'Emoção' : 'Razão'} (${Math.max(emocao, razao)}%) – Impacto: Decisões intuitivas vs. analíticas.`;
+
+      // Escala Pensante x Atuante
+      const pensante = pct.I + pct.O;
+      const atuante = pct.C + pct.A;
+      const thinkActBar = document.getElementById('thinkActBar');
+      const thinkActLabel = document.getElementById('thinkActLabel');
+      const taWidth = Math.max(pensante, atuante);
+      thinkActBar.style.width = `${taWidth}%`;
+      thinkActLabel.textContent = `Dominância: ${atuante > pensante ? 'Atuante' : 'Pensante'} (${Math.max(pensante, atuante)}%) – Impacto: Reflexão vs. ação imediata.`;
+
+      // Nova Escala Criativo x Prático
+      const criativo = pct.I + pct.C;
+      const pratico = pct.O + pct.A;
+      const creativePracticalBar = document.getElementById('creativePracticalBar');
+      const creativePracticalLabel = document.getElementById('creativePracticalLabel');
+      const cpWidth = Math.max(criativo, pratico);
+      creativePracticalBar.style.width = `${cpWidth}%`;
+      creativePracticalLabel.textContent = `Dominância: ${criativo > pratico ? 'Criativo' : 'Prático'} (${Math.max(criativo, pratico)}%) – Impacto: Inovação vs. eficiência operacional.`;
+
+      document.getElementById('questionScreen').style.display = 'none';
+      document.getElementById('questionScreen').classList.remove('active');
+      document.getElementById('resultsScreen').style.display = 'block';
+      document.getElementById('resultsScreen').classList.add('active');
+    }
+
+    document.getElementById('pdfBtn').addEventListener('click', () => {
+      const { jsPDF } = window.jspdf;
+      html2canvas(document.getElementById('resultsScreen')).then(canvas => {
+        const img = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const width = pdf.internal.pageSize.getWidth();
+        const height = (canvas.height * width) / canvas.width;
+        pdf.addImage(img, 'PNG', 10, 10, width - 20, Math.min(height - 20, 270));
+        pdf.save('perfil-comportamental-resultado.pdf');
+      });
+    });
+
+    loadQuestion(0);
+  </script>
+</body>
+</html>
